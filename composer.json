@@ -1,0 +1,17 @@
+{
+    "name": "ubuntu/learningassist",
+    "autoload": {
+        "psr-4": {
+            "Ubuntu\\Learningassist\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "jfederico",
+            "email": "jesus@123it.ca"
+        }
+    ],
+    "require": {
+        "league/html-to-markdown": "^5.1"
+    }
+}
