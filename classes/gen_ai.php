@@ -40,13 +40,19 @@ abstract class gen_ai
         $manager = di::get(manager::class);
 
         // Get provider instances
-        $provider_instances = $manager->get_provider_instances(['provider' => 'aiprovider_azureai\\provider']);
+        $provider_instances = $manager->get_provider_instances();
 
-        // Get first item in the array
-        $provider_instance = reset($provider_instances);
+        // Find the first provider that supports generate_text.
+        $provider_instance = null;
+        foreach ($provider_instances as $instance) {
+            if (!empty($instance->actionconfig['core_ai\aiactions\generate_text'])) {
+                $provider_instance = $instance;
+                break;
+            }
+        }
 
         if (empty($provider_instance)) {
-            throw new Exception('No provider instances found');
+            throw new Exception('No provider instance with generate_text action found');
         }
 
         // log to file
