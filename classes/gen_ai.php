@@ -42,10 +42,10 @@ abstract class gen_ai
         // Get provider instances
         $provider_instances = $manager->get_provider_instances();
 
-        // Find the first provider that supports generate_text.
+        // Find the first provider that supports generate_text and is enabled.
         $provider_instance = null;
         foreach ($provider_instances as $instance) {
-            if (!empty($instance->actionconfig['core_ai\aiactions\generate_text'])) {
+            if (!empty($instance->enabled) && !empty($instance->actionconfig['core_ai\aiactions\generate_text'])) {
                 $provider_instance = $instance;
                 break;
             }
@@ -57,13 +57,23 @@ abstract class gen_ai
 
         // log to file
         $provider_config = self::get_text_provider($provider_instance);
-        $response = self::azure_openai_chat(
-            $messages,
-            $provider_config->apikey,
-            $provider_config->endpoint,
-            $provider_config->deployment,
-            $provider_config->apiversion
-        );
+        if (!empty($provider_config->deployment) && !empty($provider_config->apiversion)) {
+            // Azure OpenAI
+            $response = self::azure_openai_chat(
+                $messages,
+                $provider_config->apikey,
+                $provider_config->endpoint,
+                $provider_config->deployment,
+                $provider_config->apiversion
+            );
+        } else {
+            // OpenAI or Ollama
+            $response = self::openai_chat(
+                $messages,
+                $provider_config->apikey,
+                $provider_config->model ?? 'gpt-3.5-turbo'
+            );
+        }
 
         return markdown_to_html($response);
 
@@ -77,12 +87,18 @@ abstract class gen_ai
     private static function get_text_provider($provider_instance): \stdClass
     {
         $provider = new \stdClass();
-        $provider->apikey = $provider_instance->config['apikey'];
-        $provider->endpoint = $provider_instance->config['endpoint'];
+        $provider->apikey = $provider_instance->config['apikey'] ?? '';
+        $provider->endpoint = '';
+        $provider->deployment = '';
+        $provider->apiversion = '';
+        $provider->model = '';
         foreach ($provider_instance->actionconfig as $key => $action_config) {
-            if ($key == 'core_ai\aiactions\generate_text') {
-                $provider->deployment = $provider_instance->actionconfig[$key]['settings']['deployment'];
-                $provider->apiversion = $provider_instance->actionconfig[$key]['settings']['apiversion'];
+            if ($key == 'core_ai\\aiactions\\generate_text' || $key == 'core_ai\\aiactions\generate_text' || $key == 'core_ai\aiactions\generate_text') {
+                $settings = $provider_instance->actionconfig[$key]['settings'];
+                $provider->endpoint = $settings['endpoint'] ?? '';
+                $provider->deployment = $settings['deployment'] ?? '';
+                $provider->apiversion = $settings['apiversion'] ?? '';
+                $provider->model = $settings['model'] ?? '';
             }
         }
         return $provider;
